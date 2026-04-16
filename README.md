@@ -1,203 +1,248 @@
-# Auto-AVSR: Lip-Reading Sentences Project
+# Lipreading Performance Optimization System
 
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/auto-avsr-audio-visual-speech-recognition/lipreading-on-lrs3-ted)](https://paperswithcode.com/sota/lipreading-on-lrs3-ted?p=auto-avsr-audio-visual-speech-recognition)
+> 项目简介
 
-## Update
+传统唇语识别通常仅依赖视觉模态输入，在实际应用中容易受到说话人差异、拍摄条件变化、嘴部区域边界模糊以及输入质量波动等因素影响，从而导致识别性能下降。为提升模型在复杂场景下的泛化能力与系统可落地性，本项目以论文研究成果为基础，将模型方法与工程系统进行了统一封装，形成了一条完整的推理闭环。
 
-`2023-07-26`: We released the implementation of [Real-Time AV-ASR](https://github.com/pytorch/audio/tree/main/examples/avsr).
+本项目不仅关注模型精度，也强调工程可观测性与演示可用性。系统支持视频上传、元信息解析、口唇区域提取、模型推理、识别结果展示、运行状态反馈与日志记录，可用于课程设计、毕业论文展示、算法验证以及后续功能扩展。
 
-## Introduction
+---
 
-This repository is an open-sourced framework for speech recognition, with a primary focus on visual speech (lip-reading). It is designed for end-to-end training, aiming to deliver state-of-the-art models and enable reproducibility on audio-visual speech benchmarks.
+## 方法来源
 
-<div align="center"><img src="doc/pipeline.png" width="640"/></div>
+本项目对应的研究工作主要围绕“唇语识别模型性能优化”展开，核心思路包括：
 
-By using this repository, you can achieve a word error rate (WER) of 20.3% for visual speech recognition (VSR) and 1.0% for audio speech recognition (ASR) on LRS3.
+1. **自监督预训练增强视觉表征能力**  
+   通过预训练策略提升模型对口唇运动细粒度变化的建模能力，为后续识别提供更稳定的特征基础。
 
-## Setup
+2. **静态外观—动态风格解耦**  
+   针对跨说话人场景中的个体差异问题，引入个性特征建模思路，对样本的静态外观统计与动态风格统计进行分析，并通过中性统计对齐方式减弱说话人相关因素带来的干扰。
 
-1. Set up environment:
+3. **统一推理服务封装**  
+   将训练阶段的算法能力统一封装为模型推理模块，在系统层面不再显式拆分训练过程，而是以“统一识别服务”的方式对外提供推理能力，从而更符合实际部署逻辑。
 
-```Shell
-conda create -y -n auto_avsr python=3.8
-conda activate auto_avsr
+---
+
+## 系统架构
+
+系统整体遵循 **前后端分离、模块化封装、统一模型服务** 的设计原则，主要由以下部分组成：
+
+- **前端展示层**：负责页面交互、状态展示、样例切换与结果可视化
+- **后端接口层**：负责请求接收、参数校验与任务调度
+- **预处理服务层**：负责视频解码、人脸检测、关键点定位、几何对齐、嘴部 ROI 裁剪与归一化
+- **模型推理服务层**：负责加载训练完成的唇语识别模型并输出识别文本
+- **资源管理层**：负责缓存、中间结果、日志与结果文件管理
+
+整体处理链路如下：
+
+```text
+输入视频 / 样例选择
+        ↓
+    元信息解析
+        ↓
+口唇 ROI 预处理
+        ↓
+   模型推理与解码
+        ↓
+结果展示 / 日志记录 / 状态反馈
 ```
 
-2. Clone repository:
+---
 
-```Shell
-git clone https://github.com/mpc001/auto_avsr
-cd auto_avsr
+## 功能模块
+
+### 1. 视频输入与数据管理
+
+用于上传用户视频或加载样例视频，建立后续处理任务的输入基础。该模块支持快速切换不同说话人、不同条件的视频样本，便于展示模型在集内样例、集外样例和困难样例上的识别表现。
+
+### 2. 口唇 ROI 预处理
+
+该模块是连接原始视频与模型输入的关键桥梁。系统对视频逐帧进行解析，在每帧中完成面部检测、关键点估计、几何对齐、嘴部区域裁剪与尺寸归一化，最终生成适合模型输入的标准化口唇序列。
+
+### 3. 统一模型推理
+
+该模块负责加载训练完成的唇语识别模型，并将预处理后的 ROI 序列映射为最终识别文本。对于外部调用者而言，该模块表现为统一的推理服务接口；对于内部实现而言，它集成了论文中的方法改进能力。
+
+### 4. 结果分析与样例展示
+
+系统可展示集内说话人样例、集外说话人样例与困难样例，并对参考文本与预测文本进行对比，以更直观地体现模型在不同条件下的识别表现。
+
+### 5. 日志与运行状态
+
+系统记录关键运行事件，包括视频解析完成、ROI 预处理完成、模型推理完成、结果保存完成等信息，并提供推理耗时、模型版本、服务状态等辅助信息，提升系统的可调试性与可观测性。
+
+---
+
+## 技术栈
+
+### 前端
+
+- React
+- Tailwind CSS
+
+### 后端 / 模型
+
+- Python
+- PyTorch
+- OpenCV
+
+### 运行环境
+
+- Node.js
+- NVIDIA GPU（论文实验环境使用 RTX 4090）
+
+---
+
+## 适用场景
+
+- 唇语识别相关课程设计与毕设项目
+- 毕业论文中的系统实现与原型展示
+- 跨说话人唇语识别算法验证
+- 口唇 ROI 预处理流程演示
+- 识别模型部署前的原型验证平台
+- 后续扩展为多模态音视频识别系统的基础框架
+
+---
+
+## 快速开始
+
+> 以下命令为通用示例，请根据你的仓库实际目录结构进行调整。
+
+### 1. 克隆项目
+
+```bash
+git clone https://github.com/your-username/your-repo.git
+cd your-repo
 ```
 
-3. Install fairseq within the repository:
+### 2. 安装前端依赖
 
-```
-git clone https://github.com/pytorch/fairseq
-cd fairseq
-pip install --editable ./
-cd ..
-```
-
-4. Install PyTorch (tested pytorch version: v2.0.1) and other packages:
-
-```Shell
-pip install torch torchvision torchaudio
-pip install pytorch-lightning==1.5.10
-pip install sentencepiece
-pip install av
-pip install hydra-core --upgrade
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
-5. Install ffmpeg:
+### 3. 安装后端依赖
 
-```
-conda install "ffmpeg<5" -c conda-forge
-```
-
-6. Prepare the dataset. See the instructions in the [preparation](./preparation) folder.
-
-## Training
-
-```Shell
-python train.py exp_dir=[exp_dir] \
-               exp_name=[exp_name] \
-               data.modality=[modality] \
-               data.dataset.root_dir=[root_dir] \
-               data.dataset.train_file=[train_file] \
-               trainer.num_nodes=[num_nodes] \
-```
-<details open>
-  <summary><strong>Required arguments</strong></summary>
-
-- `exp_dir`: Directory to save checkpoints and logs to.
-- `exp_name`: Experiment name. Location of checkpoints is `[exp_dir]`/`[exp_name]`.
-- `data.modality`: Type of input modality, valid values: `video` and `audio`.
-- `data.dataset.root_dir`: Root directory of preprocessed dataset, default: `null`.
-- `data.dataset.train_file`: Filename of training label list, default: `lrs3_train_transcript_lengths_seg24s.csv`.
-- `trainer.num_nodes`: Number of machines used, default: 1.
-- `trainer.resume_from_checkpoint`: Path of the checkpoint from which training is resumed, default: `null`.
-
-</details>
-
-<details>
-  <summary><strong>Optional arguments</strong></summary>
-
-- `data.dataset.val_file`: Filename of validation label list, default: `lrs3_test_transcript_lengths_seg24s.csv`.
-- `pretrained_model_path`: Path to the pre-trained model, default: `null`.
-- `transfer_frontend` Flag to load the weights of front-end module, works with `pretrained_model_path`.
-- `transfer_encoder` Flag to load the weights of encoder, works with `pretrained_model_path`.
-- `trainer.max_epochs`: Number of epochs, default: 75.
-- `trainer.gpus`: Number of GPUs to train on on each machine, default: -1, which use all gpus.
-- `data.max_frames`: Maximal number of frames in a batch, default: 1800.
-- `optimizer.lr`: Learning rate, default: 0.001.
-
-</details>
-
-
-<details open>
-  <summary><strong>Note</strong></summary>
-
-- For lrs3, start by training from scratch on a subset (23h, max duration=4 seconds) at a learning rate of 0.0002 (see [model-zoo](#model-zoo)). Then fine-tune on the full set with a learning rate of 0.001. A script for subset creation is available [here](./preparation/limit_length.py). For training new datasets, please refer to [instruction](INSTRUCTION.md).
-- If you want to monitor the training process, customise [logger](https://lightning.ai/docs/pytorch/1.5.8/api_references.html#loggers-api) within `pytorch_lightning.Trainer()`.
-- To maximize resource utilization, set `data.max_frames` to the largest to fit into your GPU memory.
-
-</details>
-
-## Testing
-
-```Shell
-python eval.py data.modality=[modality] \
-               data.dataset.root_dir=[root_dir] \
-               data.dataset.test_file=[test_file] \
-               pretrained_model_path=[pretrained_model_path] \
+```bash
+cd backend
+pip install -r requirements.txt
+python app.py
 ```
 
-<details open>
-  <summary><strong>Required arguments</strong></summary>
+### 4. 准备模型权重
 
-- `data.modality`: Type of input modality, valid values: `video`, `audio` and `audiovisual`.
-- `data.dataset.root_dir`: Root directory of preprocessed dataset, default: `null`.
-- `data.dataset.test_file`: Filename of testing label list, default: `lrs3_test_transcript_lengths_seg24s.csv`.
-- `pretrained_model_path`: Path to the pre-trained model, set to `[exp_dir]/[exp_name]/model_avg_10.pth`, default: `null`.
+请将训练完成的模型权重放入约定目录，例如：
 
-</details>
-
-<details>
-  <summary><strong>Optional arguments</strong></summary>
-
-- `decode.snr_target=[snr_target]`: Level of signal-to-noise ratio (SNR), default: 999999.
-
-</details>
-
-## Demo
-
-Want to see how our asr/vsr model performs on your audio/video? Just run this command:
-
-```Shell
-python demo.py  data.modality=[modality] \
-                pretrained_model_path=[pretrained_model_path] \
-                file_path=[file_path]
+```text
+checkpoints/
+└── best_model.pt
 ```
-<details open>
-  <summary><strong>Required arguments</strong></summary>
 
-- `data.modality`: Type of input modality, valid values: `video` and `audio`.
-- `pretrained_model_path`: Path to the pre-trained model.
-- `file_path`: Path to the file for testing.
+并在配置文件中指定权重路径。
 
-</details>
+### 5. 启动识别流程
 
+- 打开前端页面
+- 上传测试视频或选择样例视频
+- 执行元信息解析与 ROI 预处理
+- 点击“开始识别”
+- 查看识别文本、耗时、日志与状态信息
 
-## Model zoo
+---
 
-We provide audio-only, visual-only and audio-visual models for lrs3.
+## 项目目录建议
 
-<details open>
+如果你希望仓库结构更清晰，可以参考如下组织方式：
 
-<summary>LRS3</summary>
+```text
+.
+├── frontend/                 # 前端页面
+│   ├── src/
+│   └── public/
+├── backend/                  # 后端接口与服务
+│   ├── api/
+│   ├── services/
+│   ├── utils/
+│   └── app.py
+├── models/                   # 模型定义
+├── checkpoints/              # 模型权重
+├── data/                     # 测试样例或数据索引
+├── outputs/                  # 推理结果输出
+├── logs/                     # 日志文件
+├── assets/                   # README 截图、示意图等
+└── README.md
+```
 
-| Model                                 | Training data (h)  |  WER [%]   |    MD5            |
-|---------------------------------------|:------------------:|:----------:|:------------------------:|
-| [`vsr_trlrs3_23h_base.pth`](https://drive.google.com/file/d/1OBEHbStKKFG7VDij14RDLN9VYSdE_Bhs/view?usp=sharing)             |        23           |    96.6    | 50c88  |
-| [`vsr_trlrs3_base.pth`](https://drive.google.com/file/d/1aawSjxIL2ewo0W0fg4TBQgR8WMAmPeSL/view?usp=sharing)                 |        438          |    36.7    | ea3ec  |
-| [`vsr_trlrs3vox2_base.pth`](https://drive.google.com/file/d/1mLAuCnK2y7zbmiHlAXMqPSF_ApGqfbAD/view?usp=sharing)             |        1759         |    25.0    | 0a126  |
-| [`vsr_trlrwlrs2lrs3vox2avsp_base.pth`](https://drive.google.com/file/d/19GA5SqDjAkI5S88Jt5neJRG-q5RUi5wi/view?usp=sharing)  |        3448         |    20.3    | a896f  |
-| [`asr_trlrs3_23h_base.pth`](https://drive.google.com/file/d/1ERXLjBGFQDAXXKkHLBrVi6xI7l1QiKyL/view?usp=sharing)             |        23           |    72.5    | 87d45  |
-| [`asr_trlrs3_base.pth`](https://drive.google.com/file/d/1FuYLkBt6DFzxIR7AbCs6jzhbLfaJMk6a/view?usp=sharing)                 |        438          |    2.04    | 4fa87  |
-| [`asr_trlrs3vox2_base.pth`](https://drive.google.com/file/d/13o_KvPeLHkjFPVm28Gvn8EQNBkS5ZBV6/view?usp=sharing)             |        1759         |    1.07    | 7beab  |
-| [`asr_trlrwlrs2lrs3vox2avsp_base.pth`](https://drive.google.com/file/d/12vigJjL_ipgRz5CMYYQPdn8edEXD-Cuq/view?usp=sharing)  |        3448         |    0.99    | dc759  |
-| [`avsr_trlrwlrs2lrs3vox2avsp_base.pth`](https://drive.google.com/file/d/1mU6MHzXMiq1m6GI-8gqT2zc2bdStuBXu/view?usp=sharing)  |        3448         |    0.93    | 6b3c5  |
+---
 
-</details>
+## 可视化展示建议
 
-## Citation
+为了让 GitHub 首页更完整，建议在仓库中补充以下截图，并在本 README 中替换对应图片路径：
 
-If you find this repository helpful, please consider citing our work:
+```markdown
+![系统总览](assets/overview.png)
+![视频输入页面](assets/input_page.png)
+![ROI预处理页面](assets/roi_page.png)
+![模型推理页面](assets/inference_page.png)
+![结果分析页面](assets/result_page.png)
+![日志页面](assets/log_page.png)
+```
+
+你也可以在此基础上进一步补充：
+
+- 系统总体架构图
+- 数据流转时序图
+- 运行状态控制流程图
+- 典型样例识别对比图
+
+---
+
+## 后续规划
+
+- [ ] 补充完整的数据预处理脚本
+- [ ] 开放训练代码与配置文件
+- [ ] 增加批量识别功能
+- [ ] 增加 CER/WER 自动评估模块
+- [ ] 接入语言模型后处理
+- [ ] 扩展到多模态音视频识别任务
+- [ ] 提供 Docker 部署方案
+- [ ] 提供在线 Demo 或 API 服务
+
+---
+
+## 注意事项
+
+1. 当前项目重点在于论文方法验证与原型展示，部分实现可能更偏研究型而非工业级部署。
+2. 若你的仓库尚未公开训练数据或模型权重，可以在 README 中明确说明当前开源范围。
+3. 若使用了第三方数据集、预训练模型或参考代码，请在仓库中补充对应致谢与许可证信息。
+
+---
+
+## 引用
+
+如果本项目对你的研究或工程工作有帮助，欢迎引用相关论文与仓库。
 
 ```bibtex
-@inproceedings{ma2023auto,
-  author={Ma, Pingchuan and Haliassos, Alexandros and Fernandez-Lopez, Adriana and Chen, Honglie and Petridis, Stavros and Pantic, Maja},
-  booktitle={IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)},
-  title={Auto-AVSR: Audio-Visual Speech Recognition with Automatic Labels},
-  year={2023},
-  pages={1-5},
-  doi={10.1109/ICASSP49357.2023.10096889}
+@mastersthesis{lipreading_optimization,
+  title  = {唇语识别模型性能优化研究与实现},
+  author = {limengtao},
+  school = {BUPT},
+  year   = {2026}
 }
 ```
 
-## Acknowledgement
+---
 
-This repository is built using the [espnet](https://github.com/espnet/espnet), [fairseq](https://github.com/facebookresearch/fairseq), [raven](https://github.com/ahaliassos/raven) and [avhubert](https://github.com/facebookresearch/av_hubert) repositories.
+## 致谢
 
-## License
+本项目来源于本人硕士阶段关于唇语识别模型性能优化与系统实现的研究工作。感谢相关开源社区、深度学习框架以及视觉处理工具对本项目开发提供的支持。
 
-Code is Apache 2.0 licensed. The pre-trained models provided in this repository may have their own licenses or terms and conditions derived from the dataset used for training.
+---
 
-## Contact
-
-Contributions are welcome; feel free to create a PR or email me:
-
+```text
+MIT License
 ```
-[Pingchuan Ma](pingchuan.ma16[at]imperial.ac.uk)
-```
+
+如果你暂未确定许可证，可先保留为空，待仓库公开策略明确后再补充。
